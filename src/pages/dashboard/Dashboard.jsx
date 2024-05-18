@@ -6,6 +6,8 @@ import { useFormik } from "formik";
 
 const Dashboard = () => {
   const [data, setData] = useState([]);
+  const [sortType, setSortType] = useState(null); // null: sıralama yok, 'asc': A-Z, 'desc': Z-A
+  const [searchTerm, setSearchTerm] = useState("");
 
   const getData = () => {
     axios
@@ -18,6 +20,18 @@ const Dashboard = () => {
   useEffect(() => {
     getData();
   }, []);
+
+  useEffect(() => {
+    if (sortType) {
+      setData((prevData) => [...prevData].sort((a, b) => {
+        if (sortType === 'asc') {
+          return a.title.localeCompare(b.title);
+        } else {
+          return b.title.localeCompare(a.title);
+        }
+      }));
+    }
+  }, [sortType]);
 
   const deleteItem = (id) => {
     axios.delete(`https://6646eb6651e227f23ab04479.mockapi.io/basket/${id}`);
@@ -41,9 +55,31 @@ const Dashboard = () => {
     },
   });
 
+  const handleSort = (type) => {
+    setSortType(type);
+  };
+
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const filteredData = data.filter((item) =>
+    item.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div>
       <Header />
+      <div>
+        <button onClick={() => handleSort("asc")}>A-Z</button>
+        <button onClick={() => handleSort("desc")}>Z-A</button>
+        <input
+          type="text"
+          placeholder="Search..."
+          value={searchTerm}
+          onChange={handleSearch}
+        />
+      </div>
       <div>
         <form onSubmit={formik.handleSubmit}>
           <input
@@ -81,10 +117,9 @@ const Dashboard = () => {
           alignItems: "center",
         }}
       >
-        {data &&
-          data.map((item) => (
-            <DashCard item={item} sil={() => deleteItem(item.id)} />
-          ))}
+        {filteredData.map((item) => (
+          <DashCard key={item.id} item={item} sil={() => deleteItem(item.id)} />
+        ))}
       </div>
     </div>
   );

@@ -1,68 +1,122 @@
 import React, { useEffect, useState } from "react";
 import Header from "../../components/header/Header";
+import DashCard from "../../components/cards/DashCard";
 import axios from "axios";
-import ProductCard from "../../components/cards/ProductCard";
+import { useFormik } from "formik";
 
-const Home = () => {
-    const [data,setData] =useState([])
-    const [searchText, setSearchText] = useState('')
-    const [filteredData, setFilteredData] = useState([])
+const Dashboard = () => {
+  const [data, setData] = useState([]);
+  const [searchText, setSearchText] = useState('')
+  const [sortType, setSortType] = useState() //SORT
 
-    const handleSearch = (e) => {
+  const handleSort = (type) => { //SORT
+    setSortType(type)
+  }
 
-        setSearchText(e.target.value)
-        const searchedData = data.filter(item => item.title.toLowerCase().includes(searchText.toLowerCase()))
-        setFilteredData(searchedData)
+  useEffect(() => { //SORT
+    if(sortType){
+      setData((prevData) => [...prevData].sort((a, b) => {
+        if(sortType === 'asc') {
+          return a.title.localeCompare(b.title)
+        } else {
+          return b.title.localeCompare(a.title)
+        }
+      }))
     }
+  },[sortType])// dependency-de bildirirem ki her state deyisende yeniden render elesin
 
-    
+  const getData = () => {
+    axios
+      .get("https://6646eb6651e227f23ab04479.mockapi.io/basket")
+      .then((res) => {
+        setData(res.data);
+      });
+  };
 
-    const getData = () => {
-        axios.get('https://dummyjson.com/products')
-        .then(res => {
-            setData(res.data.products)
-        })
-    }
+  useEffect(() => {
+    getData();
+  }, []);
 
-    
-    useEffect(() => {
-      getData()
-    }, [])
-    
-    const addToBasket = (product) => {
-            axios.post('https://6646eb6651e227f23ab04479.mockapi.io/basket',product)
-    }
+  const deleteItem = (id) => {
+    axios.delete(`https://6646eb6651e227f23ab04479.mockapi.io/basket/${id}`);
+    setTimeout(() => {
+      getData();
+    }, 1000);
+  };
 
-    const addToWishlist = async (product) => {
-       await  axios.get('https://6646eb6651e227f23ab04479.mockapi.io/wishlist')
-        .then(res => {
-            console.log(res.data);
-            const db = res.data
-            const pro = db.find(item => item.id == product.id)
-            if(pro) {
-                alert('data var')
-            } else(
-                axios.post('https://6646eb6651e227f23ab04479.mockapi.io/wishlist',product)
-            )
-        })
-    }
+  const formik = useFormik({
+    initialValues: {
+      thumbnail: "",
+      title: "",
+      description: "",
+      price: "",
+    },
+    onSubmit: (values) => {
+      axios.post(`https://6646eb6651e227f23ab04479.mockapi.io/basket/`, values);
+      setTimeout(() => {
+        getData();
+      }, 3000);
+    },
+  });
+
+  const handleSearch = (event) => { //search butonuna basmadan onchangede evente gore funksiyani cagirir
+    setSearchText(event.target.value)
+  }
+
+  const filteredData = data.filter(item => item.title.toLowerCase().includes(searchText.toLowerCase())) 
 
   return (
     <div>
       <Header />
       <div>
-        <input type="text" name="" id="" value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        <button onClick={handleSearch}>Axtar</button>
-        {filteredData && filteredData.map(item => <p>{item.title}</p>)}
+        <button onClick={() => handleSort('asc')} >A-Z</button>
+        <button onClick={() => handleSort('desc')}>Z-A</button>
+        <input type="text" name="" id="" value={searchText} onChange={handleSearch} placeholder="Search..."/>
       </div>
-      <div style={{display:'flex', flexDirection:'column', justifyContent:'center', width:'100%', alignItems:'center'}}>
-        <h1>Bomba məhsullar</h1>
-        <div style={{display:'flex', flexWrap:'wrap', gap:10, justifyContent:'center'}}>
-            {data && data.map(item => <ProductCard item={item} addToBasket={() => addToBasket(item)} addToWish={() => addToWishlist(item)}/>)}
-        </div>
+      <div>
+        <form onSubmit={formik.handleSubmit}>
+          <input
+            name="thumbnail"
+            type="text"
+            onChange={formik.handleChange}
+            value={formik.values.thumbnail}
+          />
+          <input
+            name="title"
+            type="text"
+            onChange={formik.handleChange}
+            value={formik.values.title}
+          />
+          <input
+            name="description"
+            type="text"
+            onChange={formik.handleChange}
+            value={formik.values.description}
+          />
+          <input
+            name="price"
+            type="text"
+            onChange={formik.handleChange}
+            value={formik.values.price}
+          />
+          <button type="submit">Submit</button>
+        </form>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          width: "100%",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        {filteredData &&
+          filteredData.map((item) => (
+            <DashCard item={item} sil={() => deleteItem(item.id)} />
+          ))}
       </div>
     </div>
   );
 };
 
-export default Home;
+export default Dashboard;
